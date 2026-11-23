@@ -1,6 +1,6 @@
 [package]
 name = "comment-deck"
-version = "0.1.2"
+version = "0.1.3"
 description = "Customizable stream comment overlay for YouTube and Twitch"
 authors = ["Linn-0412"]
 edition = "2021"

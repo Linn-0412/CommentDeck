@@ -119,7 +119,7 @@ function renderConnect() {
     oninput: (e) => { config.connections.twitch = e.target.value.trim(); changed(); } });
 
   tab.append(
-    section("YouTube", "チャンネル(@ハンドル)を入れておくと、配信中の枠を自動で探してつなぎます。配信前につないでおけば、始まるのを待ちます。",
+    section("YouTube", "チャンネル(@ハンドル)を入れておくと、配信中の枠を自動で探してつなぎます。配信前につないでおけば、始まるのを待ちます。限定公開の配信は自動で見つからないので、配信の URL(https://youtu.be/… など)を入力してください。メンバー限定の配信には対応していません。",
       row("チャンネル / URL", [yt]),
       row("", [
         h("button", { class: "btn primary", onclick: () => invoke("connect_youtube", { input: config.connections.youtube }) }, "接続"),

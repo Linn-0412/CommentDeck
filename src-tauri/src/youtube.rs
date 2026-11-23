@@ -121,7 +121,7 @@ pub async fn run(app: AppHandle, input: String) {
                 &app,
                 "youtube",
                 "connecting",
-                "配信中・予約中の枠が見つかりません。配信が始まるのを待っています…",
+                "配信中・予約中の公開の枠が見つかりません。配信が始まるのを待っています…(限定公開の配信は、@ハンドルではなく配信の URL を入力してください)",
             ),
         }
         if direct.is_some() {
