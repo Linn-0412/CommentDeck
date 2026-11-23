@@ -11,6 +11,7 @@ function connect() {
     if (data.type === "config") deck.setConfig(data.config || {});
     else if (data.type === "message") deck.add(data.message);
     else if (data.type === "delete") deck.remove(data.id);
+    else if (data.type === "clear") deck.clear();
   };
   // アプリを閉じて開き直しても自動でつなぎ直す
   ws.onclose = () => setTimeout(connect, 2000);

@@ -41,7 +41,7 @@ export const ROLE_LABELS = {
   member: "メンバー / サブスク",
   vip: "VIP",
   verified: "認証済み",
-  first: "初めてのコメント",
+  first: "初見(チャンネルで初めて)",
 };
 
 export const PAID_LABELS = {

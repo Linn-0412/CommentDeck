@@ -1,4 +1,5 @@
 mod model;
+mod seen;
 mod server;
 mod twitch;
 mod youtube;
@@ -182,6 +183,23 @@ fn disconnect_twitch(app: AppHandle, state: State<'_, Arc<AppState>>) {
     set_status(&app, "twitch", "idle", "");
 }
 
+/// OBS に表示中のコメントを全部消す(設定画面の「クリア」)。
+#[tauri::command]
+fn clear_overlay(state: State<'_, Arc<AppState>>) {
+    let _ = state.tx.send(json!({ "type": "clear" }).to_string());
+}
+
+/// 「初見」判定の記録を消す(次からは全員が初見扱いからやり直し)。
+#[tauri::command]
+fn reset_seen(app: AppHandle) -> Result<(), String> {
+    if let Some(d) = seen::dir(&app) {
+        if d.exists() {
+            std::fs::remove_dir_all(&d).map_err(|e| format!("記録を消せませんでした: {e}"))?;
+        }
+    }
+    Ok(())
+}
+
 /// テストコメントをオーバーレイにも流す(設定画面で作った ChatMessage と同じ形の JSON)。
 #[tauri::command]
 fn send_test(state: State<'_, Arc<AppState>>, message: Value) {
@@ -306,6 +324,8 @@ pub fn run() {
             connect_twitch,
             disconnect_twitch,
             send_test,
+            clear_overlay,
+            reset_seen,
             list_fonts,
             write_text_file,
             read_text_file,

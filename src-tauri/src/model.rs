@@ -7,6 +7,8 @@ pub struct ChatMessage {
     pub id: String,
     /// "youtube" / "twitch"
     pub platform: String,
+    /// 投稿者の ID(YouTube はチャンネル ID、Twitch はユーザー ID)。表示名が変わっても同じ。
+    pub author_id: String,
     pub author_name: String,
     pub author_icon: String,
     /// Twitch の名前の色など(なければ空)

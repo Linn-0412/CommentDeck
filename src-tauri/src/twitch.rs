@@ -253,6 +253,7 @@ fn base(irc: &Irc, text: String) -> ChatMessage {
             .cloned()
             .unwrap_or_else(|| format!("tw-{}", now_ms())),
         platform: "twitch".into(),
+        author_id: t.get("user-id").cloned().unwrap_or_default(),
         author_name: name,
         author_icon: String::new(),
         author_color: t.get("color").cloned().unwrap_or_default(),

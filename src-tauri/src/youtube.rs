@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 use tauri::AppHandle;
 
 use crate::model::{now_ms, parse_amount, ChatMessage, Paid, Part};
+use crate::seen::Seen;
 use crate::{publish, publish_delete, set_status};
 
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
@@ -91,6 +92,8 @@ pub async fn run(app: AppHandle, input: String) {
         );
         return;
     }
+    // 「初見」判定用の記録は接続先(チャンネル)ごと
+    let mut seen = Seen::load(&app, "youtube", &input);
     loop {
         set_status(&app, "youtube", "connecting", "配信を探しています…");
         let video = match &direct {
@@ -100,7 +103,7 @@ pub async fn run(app: AppHandle, input: String) {
                 .unwrap_or(None),
         };
         match video {
-            Some(v) => match chat_session(&app, &http, &v).await {
+            Some(v) => match chat_session(&app, &http, &v, &mut seen).await {
                 Ok(()) => set_status(
                     &app,
                     "youtube",
@@ -164,7 +167,12 @@ fn next_continuation(conts: &Value) -> Option<(String, u64)> {
     None
 }
 
-async fn chat_session(app: &AppHandle, http: &Client, video: &str) -> Result<(), String> {
+async fn chat_session(
+    app: &AppHandle,
+    http: &Client,
+    video: &str,
+    seen: &mut Seen,
+) -> Result<(), String> {
     let html = http
         .get(format!(
             "https://www.youtube.com/live_chat?is_popout=1&v={video}"
@@ -240,10 +248,15 @@ async fn chat_session(app: &AppHandle, http: &Client, video: &str) -> Result<(),
         };
         errors = 0;
         let lcc = &value["continuationContents"]["liveChatContinuation"];
-        if !first {
-            if let Some(actions) = lcc["actions"].as_array() {
-                for a in actions {
-                    handle_action(app, a);
+        if let Some(actions) = lcc["actions"].as_array() {
+            for a in actions {
+                if first {
+                    // 接続前のコメントは表示しないが、投稿者は「すでに来ている人」として記録する
+                    if let Some(m) = a.pointer("/addChatItemAction/item").and_then(parse_item) {
+                        seen.mark(&m.author_id);
+                    }
+                } else {
+                    handle_action(app, a, seen);
                 }
             }
         }
@@ -367,6 +380,13 @@ fn argb_hex(v: &Value) -> String {
         .unwrap_or_default()
 }
 
+fn author_id(r: &Value) -> String {
+    r.get("authorExternalChannelId")
+        .and_then(|s| s.as_str())
+        .unwrap_or("")
+        .to_string()
+}
+
 fn base(r: &Value) -> ChatMessage {
     let parts = runs_to_parts(&r["message"]);
     ChatMessage {
@@ -376,6 +396,7 @@ fn base(r: &Value) -> ChatMessage {
             .unwrap_or("")
             .to_string(),
         platform: "youtube".into(),
+        author_id: author_id(r),
         author_name: text_of(&r["authorName"]),
         author_icon: last_thumb(&r["authorPhoto"]),
         author_color: String::new(),
@@ -387,7 +408,7 @@ fn base(r: &Value) -> ChatMessage {
     }
 }
 
-fn handle_action(app: &AppHandle, a: &Value) {
+fn handle_action(app: &AppHandle, a: &Value, seen: &mut Seen) {
     if let Some(id) = a
         .pointer("/markChatItemAsDeletedAction/targetItemId")
         .and_then(|s| s.as_str())
@@ -398,7 +419,11 @@ fn handle_action(app: &AppHandle, a: &Value) {
     let Some(item) = a.pointer("/addChatItemAction/item") else {
         return;
     };
-    if let Some(msg) = parse_item(item) {
+    if let Some(mut msg) = parse_item(item) {
+        // これまでに見たことのない人なら「初見」
+        if seen.mark(&msg.author_id) && !msg.roles.iter().any(|r| r == "owner") {
+            msg.roles.push("first".into());
+        }
         publish(app, &msg);
     }
 }
@@ -468,6 +493,7 @@ pub fn parse_item(item: &Value) -> Option<ChatMessage> {
                 .unwrap_or("")
                 .to_string(),
             platform: "youtube".into(),
+            author_id: author_id(r),
             author_name: text_of(&h["authorName"]),
             author_icon: last_thumb(&h["authorPhoto"]),
             author_color: String::new(),

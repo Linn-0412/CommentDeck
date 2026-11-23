@@ -264,6 +264,10 @@ function conditionEditor(rule, c, idx) {
       check(l, () => (c.roles || []).includes(k), (v) => {
         c.roles = v ? [...new Set([...(c.roles || []), k])] : (c.roles || []).filter((x) => x !== k);
       }))), h("span", { class: "muted small" }, "のどれか(何も選ばないと合いません)"));
+    if ((c.roles || []).includes("first")) {
+      body.append(h("div", { class: "muted small", style: "flex-basis:100%" },
+        "初見: Twitch は Twitch の「このチャンネルで初めての発言」を使います。YouTube は CommentDeck がこれまでに見たコメントをもとに判定するため、使い始めのうちは常連さんも初見になります。"));
+    }
   } else if (c.type === "paid") {
     body.append(h("div", { class: "pill-group" }, Object.entries(PAID_LABELS).map(([k, l]) =>
       check(l, () => (c.kinds || []).includes(k), (v) => {
@@ -424,6 +428,18 @@ function renderAppTab() {
     section("バージョン", null,
       row("CommentDeck", [h("span", {}, `v${appVersion}`), h("button", { class: "btn small", onclick: () => checkUpdate(true) }, "更新を確認")]),
       h("p", { class: "help" }, "起動時に新しいバージョンがあるか自動で確認します。")),
+    section("初見の記録", "YouTube の「初見(チャンネルで初めて)」は、CommentDeck がこれまでに見たコメントした人を記録して判定しています。記録を消すと、次からは全員が初見扱いからやり直しになります。",
+      row("", [h("button", { class: "btn danger", onclick: async () => {
+        if (!confirm("初見の記録を消しますか?")) return;
+        try {
+          await invoke("reset_seen");
+          // 接続中なら記録を読み直すためにつなぎ直す
+          if (config.connections.youtube && (status.youtube || {}).state && status.youtube.state !== "idle") {
+            await invoke("connect_youtube", { input: config.connections.youtube });
+          }
+          alert("初見の記録を消しました");
+        } catch (e) { alert(e); }
+      } }, "初見の記録を消す")])),
     section("オーバーレイのポート", "ほかのアプリとポートがぶつかったときだけ変えてください。変えたあとは CommentDeck を再起動し、OBS の URL も貼り直してください。",
       row("ポート番号", [h("input", { type: "number", min: 1024, max: 65535, value: config.port || 17890,
         onchange: (e) => { const v = Number(e.target.value); if (v >= 1024 && v <= 65535) { config.port = v; changed(); } } })])),
@@ -443,7 +459,11 @@ document.getElementById("btn-test").addEventListener("click", () => {
   invoke("send_test", { message: m }).catch(() => {});
 });
 document.getElementById("btn-samples").addEventListener("click", () => sampleMessages().forEach((m) => deck.add(m, false)));
-document.getElementById("btn-clear").addEventListener("click", () => deck.clear());
+// プレビューと OBS の両方から消す
+document.getElementById("btn-clear").addEventListener("click", () => {
+  deck.clear();
+  invoke("clear_overlay").catch(() => {});
+});
 
 document.getElementById("copy-url").addEventListener("click", async (e) => {
   const url = document.getElementById("overlay-url").textContent;
