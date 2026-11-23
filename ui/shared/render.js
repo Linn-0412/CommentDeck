@@ -38,7 +38,7 @@ export const DEFAULT_STYLE = {
 export const ROLE_LABELS = {
   owner: "配信者",
   moderator: "モデレーター",
-  member: "メンバー / サブスク",
+  member: "メンバーシップ(YouTube)/ サブスク(Twitch)",
   vip: "VIP",
   verified: "認証済み",
   first: "初見(チャンネルで初めて)",
