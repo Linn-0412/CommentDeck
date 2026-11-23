@@ -119,6 +119,61 @@ export function rgba(hex, opacity) {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${isNaN(a) ? 1 : a})`;
 }
 
+// ------------------------------------------------------------ 表示できない文字の置き換え
+// 一部のフォント(例: あずきフォント)は「〜」(U+301C)などの字形が空っぽで、何も表示されない。
+// 字形がそもそも無ければブラウザが別のフォントで表示するが、空っぽの字形があると置き換わらない。
+// そこで、選んだフォントで実際に描いてみて、何も描かれなかった文字だけ見た目の近い文字にする。
+
+const ALTERNATES = {
+  "〜": "～", // 〜 波ダッシュ → ～ 全角チルダ
+  "−": "－", // − マイナス → － 全角ハイフンマイナス
+  "‖": "∥", // ‖ → ∥
+  "—": "―", // — → ―
+  "¢": "￠", // ¢ → ￠
+  "£": "￡", // £ → ￡
+  "¬": "￢", // ¬ → ￢
+};
+const ALT_RE = new RegExp(`[${Object.keys(ALTERNATES).join("")}]`);
+const inkCache = new Map(); // フォント名 → Map(文字 → 描けるか)
+let inkCanvas = null;
+
+function fontReady(font) {
+  try { return document.fonts.check(`32px "${font}"`); } catch { return true; }
+}
+
+/** そのフォントでその文字を描いたとき、何か描かれるか。判定できなければ true(置き換えない)。 */
+export function drawsInk(font, ch) {
+  if (!font || typeof document === "undefined") return true;
+  if (!fontReady(font)) return true; // まだ読み込み中のフォントは判定しない(あとのコメントで判定)
+  let perFont = inkCache.get(font);
+  if (!perFont) { perFont = new Map(); inkCache.set(font, perFont); }
+  if (perFont.has(ch)) return perFont.get(ch);
+  try {
+    inkCanvas = inkCanvas || document.createElement("canvas");
+    inkCanvas.width = inkCanvas.height = 48;
+    const ctx = inkCanvas.getContext("2d", { willReadFrequently: true });
+    ctx.clearRect(0, 0, 48, 48);
+    // 指定したフォントだけを使う(字形が無ければ既定のフォントで描かれるので、それは「描ける」扱いになる)
+    ctx.font = `32px "${font}"`;
+    ctx.fillStyle = "#000";
+    ctx.textBaseline = "middle";
+    ctx.fillText(ch, 4, 24);
+    const data = ctx.getImageData(0, 0, 48, 48).data;
+    let ink = false;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) { ink = true; break; }
+    perFont.set(ch, ink);
+    return ink;
+  } catch {
+    return true;
+  }
+}
+
+/** 選んだフォントで表示できない文字を、見た目の近い文字に置き換える。 */
+export function fixGlyphs(text, font) {
+  if (!text || !ALT_RE.test(text)) return text;
+  return [...text].map((c) => (ALTERNATES[c] && !drawsInk(font, c) ? ALTERNATES[c] : c)).join("");
+}
+
 /** 色の明るさ(0 = 黒 〜 1 = 白)。 */
 export function luminance(hex) {
   const h = String(hex || "#000000").replace("#", "").padEnd(6, "0").slice(0, 6);
@@ -347,7 +402,7 @@ export class Deck {
     if (s.showName) {
       const n = document.createElement("span");
       n.className = "cd-name";
-      n.textContent = msg.authorName || "";
+      n.textContent = fixGlyphs(msg.authorName || "", s.fontFamily);
       head.appendChild(n);
     }
     if (s.showAmount && msg.paid && msg.paid.amountText && (msg.paid.kind === "superchat" || msg.paid.kind === "sticker" || msg.paid.kind === "bits")) {
@@ -369,7 +424,7 @@ export class Deck {
         if (part.alt === "sticker") img.className = "sticker";
         text.appendChild(img);
       } else {
-        text.appendChild(document.createTextNode(part.text || ""));
+        text.appendChild(document.createTextNode(fixGlyphs(part.text || "", s.fontFamily)));
       }
     }
     body.appendChild(text);
