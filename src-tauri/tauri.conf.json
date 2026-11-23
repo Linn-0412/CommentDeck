@@ -1,0 +1,57 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "CommentDeck",
+  "version": "0.1.0",
+  "identifier": "com.linn0412.commentdeck",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "CommentDeck",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 1000,
+        "minHeight": 660,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "publisher": "Linn-0412",
+    "shortDescription": "配信用コメント表示ツール",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Japanese", "English"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYxQjUwNTBFQzRFMjc3N0YKUldSL2QrTEVEZ1cxOFZhc3g2SnRlNmJvbERlKzR6a0JIUE1BVEYzOXBLQW5PcGtYNmFENXFheDYK",
+      "endpoints": [
+        "https://github.com/Linn-0412/CommentDeck/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

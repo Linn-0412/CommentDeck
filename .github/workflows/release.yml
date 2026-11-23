@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
+
+      - run: npm ci
+
+      - name: Check
+        run: |
+          npm run check
+          npm test
+          cargo test --manifest-path src-tauri/Cargo.toml
+
+      # インストーラーと、アプリ内更新用の latest.json(署名付き)を Releases に公開する
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: CommentDeck ${{ github.ref_name }}
+          releaseBody: |
+            CommentDeck(配信用コメント表示ツール)の Windows 版です。
+            `CommentDeck_x.y.z_x64-setup.exe` をダウンロードしてインストールしてください。
+            インストール済みの場合は、アプリ内の更新ボタンから更新できます。
+          releaseDraft: false
+          prerelease: false
