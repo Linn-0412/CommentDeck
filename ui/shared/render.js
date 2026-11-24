@@ -390,7 +390,8 @@ export class Deck {
       // 黄色などの明るい色では白い文字が読めないので、文字を暗くする(ルールの指定は優先)
       if (luminance(msg.paid.color) > 0.55) {
         if (!("textColor" in over)) textColor = "#1a1a1a";
-        if (!("nameColor" in over)) nameColor = "#3d3d3d";
+        // 名前が吹き出しの外(LINE 風)なら配信画面の上に出るので、暗くしない
+        if (!("nameColor" in over) && s.bubbleLayout !== "outside") nameColor = "#3d3d3d";
       }
     }
     const vars = {
