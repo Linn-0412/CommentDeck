@@ -76,9 +76,16 @@ function changed() {
 function normalize(c) {
   const d = DEFAULT_CONFIG();
   if (!c || typeof c !== "object") return d;
+  const conn = { ...d.connections, ...(c.connections || {}) };
+  // 以前の版でチャンネル欄に配信の URL を入れていた場合は、URL 欄に移す
+  if (!(c.connections || {}).youtubeMode && /(?:v=|youtu\.be\/|\/live\/)[\w-]{11}/.test(conn.youtube || "")) {
+    conn.youtubeUrl = conn.youtube;
+    conn.youtube = "";
+    conn.youtubeMode = "url";
+  }
   return {
     ...d, ...c,
-    connections: { ...d.connections, ...(c.connections || {}) },
+    connections: conn,
     style: { ...DEFAULT_STYLE, ...(c.style || {}) },
     rules: Array.isArray(c.rules) ? c.rules : STARTER_RULES(),
   };
@@ -110,19 +117,39 @@ function statusLine(platform) {
     st.state && st.state !== "idle" ? st.detail : "接続していません");
 }
 
+/** 今つなぐ YouTube の接続先(チャンネル / 配信の URL のうち選んでいるほう)。 */
+function youtubeTarget() {
+  const c = config.connections;
+  return c.youtubeMode === "url" ? c.youtubeUrl : c.youtube;
+}
+
+/** 初見の記録はチャンネル単位でまとめる(URL で接続するときもチャンネル欄を使う)。 */
+function connectYouTube() {
+  return invoke("connect_youtube", { input: youtubeTarget() || "", seenKey: config.connections.youtube || null });
+}
+
 function renderConnect() {
   const tab = document.getElementById("tab-connect");
   tab.innerHTML = "";
-  const yt = h("input", { type: "text", placeholder: "@ハンドル または 配信の URL", value: config.connections.youtube,
-    oninput: (e) => { config.connections.youtube = e.target.value.trim(); changed(); } });
+  const c = config.connections;
+  const mode = (m, label, field, placeholder) => {
+    const input = h("input", { type: "text", placeholder, value: c[field] || "",
+      oninput: (e) => { c[field] = e.target.value.trim(); changed(); } });
+    const radio = h("input", { type: "radio", name: "yt-mode", checked: (c.youtubeMode || "channel") === m,
+      onchange: () => { c.youtubeMode = m; changed(); } });
+    return h("div", { class: "row" }, h("label", { class: "check" }, radio, label), h("div", { class: "ctl" }, input));
+  };
   const tw = h("input", { type: "text", placeholder: "チャンネル名(例: your_name)", value: config.connections.twitch,
     oninput: (e) => { config.connections.twitch = e.target.value.trim(); changed(); } });
 
   tab.append(
-    section("YouTube", "チャンネル(@ハンドル)を入れておくと、配信中の枠を自動で探してつなぎます。配信前につないでおけば、始まるのを待ちます。限定公開の配信は自動で見つからないので、配信の URL(https://youtu.be/… など)を入力してください。メンバー限定の配信には対応していません。",
-      row("チャンネル / URL", [yt]),
+    section("YouTube", "どちらでつなぐかを選んで「接続」を押してください。両方の欄の内容は保存されるので、公開と限定公開の切り替えは選び直すだけです。",
+      mode("channel", "チャンネルから探す", "youtube", "@ハンドル(例: @your_channel)"),
+      mode("url", "配信の URL を指定", "youtubeUrl", "https://youtu.be/… など(限定公開のとき)"),
+      h("p", { class: "help" }, "・チャンネルから探す: 公開の配信を自動で見つけます。配信前につないでおけば、始まるのを待ちます。"),
+      h("p", { class: "help" }, "・配信の URL を指定: 限定公開の配信はチャンネルから見つからないので、こちらを使ってください。初見の判定のため、チャンネル欄も入れたままにしておいてください。メンバー限定の配信には対応していません。"),
       row("", [
-        h("button", { class: "btn primary", onclick: () => invoke("connect_youtube", { input: config.connections.youtube }) }, "接続"),
+        h("button", { class: "btn primary", onclick: () => connectYouTube() }, "接続"),
         h("button", { class: "btn", onclick: () => invoke("disconnect_youtube") }, "切断"),
       ]),
       statusLine("youtube")),
@@ -434,8 +461,8 @@ function renderAppTab() {
         try {
           await invoke("reset_seen");
           // 接続中なら記録を読み直すためにつなぎ直す
-          if (config.connections.youtube && (status.youtube || {}).state && status.youtube.state !== "idle") {
-            await invoke("connect_youtube", { input: config.connections.youtube });
+          if (youtubeTarget() && (status.youtube || {}).state && status.youtube.state !== "idle") {
+            await connectYouTube();
           }
           alert("初見の記録を消しました");
         } catch (e) { alert(e); }
@@ -493,7 +520,7 @@ async function init() {
   await listen("server-error", (e) => alert(e.payload));
 
   if (config.autoConnect) {
-    if (config.connections.youtube) invoke("connect_youtube", { input: config.connections.youtube });
+    if (youtubeTarget()) connectYouTube();
     if (config.connections.twitch) invoke("connect_twitch", { channel: config.connections.twitch });
   }
 

@@ -75,7 +75,7 @@ async fn find_live_video(http: &Client, channel: &str) -> Result<Option<String>,
     Ok(re.captures(&html).map(|c| c[1].to_string()))
 }
 
-pub async fn run(app: AppHandle, input: String) {
+pub async fn run(app: AppHandle, input: String, seen_key: String) {
     let http = client();
     let direct = video_id_from_input(&input);
     let channel = if direct.is_none() {
@@ -93,7 +93,7 @@ pub async fn run(app: AppHandle, input: String) {
         return;
     }
     // 「初見」判定用の記録は接続先(チャンネル)ごと
-    let mut seen = Seen::load(&app, "youtube", &input);
+    let mut seen = Seen::load(&app, "youtube", &seen_key);
     loop {
         set_status(&app, "youtube", "connecting", "配信を探しています…");
         let video = match &direct {
@@ -121,7 +121,7 @@ pub async fn run(app: AppHandle, input: String) {
                 &app,
                 "youtube",
                 "connecting",
-                "配信中・予約中の公開の枠が見つかりません。配信が始まるのを待っています…(限定公開の配信は、@ハンドルではなく配信の URL を入力してください)",
+                "配信中・予約中の公開の枠が見つかりません。配信が始まるのを待っています…(限定公開の配信は「配信の URL を指定」を選んで URL を入力してください)",
             ),
         }
         if direct.is_some() {

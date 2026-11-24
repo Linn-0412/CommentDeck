@@ -31,7 +31,8 @@ export const DEFAULT_CONFIG = () => ({
   version: 1,
   port: 17890,
   autoConnect: true,
-  connections: { youtube: "", twitch: "" },
+  // youtube: チャンネル(@ハンドル)/ youtubeUrl: 配信の URL(限定公開用)/ youtubeMode: どちらを使うか
+  connections: { youtube: "", youtubeUrl: "", youtubeMode: "channel", twitch: "" },
   style: { ...DEFAULT_STYLE },
   rules: STARTER_RULES(),
 });

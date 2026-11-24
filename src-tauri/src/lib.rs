@@ -144,13 +144,22 @@ fn preview_config(state: State<'_, Arc<AppState>>, config: Value) {
 }
 
 #[tauri::command]
-fn connect_youtube(app: AppHandle, state: State<'_, Arc<AppState>>, input: String) {
+fn connect_youtube(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    input: String,
+    seen_key: Option<String>,
+) {
     if let Some(h) = state.youtube_task.lock().unwrap().take() {
         h.abort();
     }
     let handle = app.clone();
     let task = tauri::async_runtime::spawn(async move {
-        youtube::run(handle, input).await;
+        // 初見の記録はチャンネル単位(配信の URL で接続しても、チャンネル欄があればそれでまとめる)
+        let key = seen_key
+            .filter(|k| !k.trim().is_empty())
+            .unwrap_or_else(|| input.clone());
+        youtube::run(handle, input, key).await;
     });
     *state.youtube_task.lock().unwrap() = Some(task);
 }
