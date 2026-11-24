@@ -59,6 +59,35 @@ export const THEMES = [
     style: { ...DEFAULT_STYLE, fontFamily: "Kosugi Maru", fontWeight: 400, textColor: "#4a4a4a", nameColor: "#8a6fd1",
       bgColor: "#fdf6ec", bgOpacity: 0.9, radius: 18, shadow: true, animation: "fade" },
   },
+  {
+    name: "LINE 風", description: "白い吹き出し。配信者のコメントは右側・緑",
+    style: { ...DEFAULT_STYLE, fontFamily: "Noto Sans JP", fontWeight: 400, textColor: "#111111", nameColor: "#ffffff",
+      useTwitchColor: false, bgColor: "#ffffff", bgOpacity: 1, radius: 20, paddingX: 16, paddingY: 10, shadow: false,
+      shape: "line", bubbleLayout: "outside", iconSize: 42, showPlatform: false, animation: "pop" },
+    // このテーマと一緒に追加するルール(LINE の「自分」側の見た目)
+    rules: [{ name: "配信者は右側・緑(LINE 風)", enabled: true, match: "all", conditions: [{ type: "role", roles: ["owner"] }],
+      style: { bgColor: "#41d34c", bgOpacity: 1, textColor: "#111111", side: "right" } }],
+  },
+  {
+    name: "しっぽ付き吹き出し", description: "マンガのような吹き出し",
+    style: { ...DEFAULT_STYLE, fontFamily: "Zen Maru Gothic", textColor: "#222222", nameColor: "#e4572e", bgColor: "#ffffff",
+      bgOpacity: 0.95, radius: 16, shape: "speech", borderColor: "#222222", borderWidth: 0, animation: "pop" },
+  },
+  {
+    name: "カプセル", description: "まるいカプセル型でスッキリ",
+    style: { ...DEFAULT_STYLE, fontFamily: "M PLUS Rounded 1c", bgColor: "#2d2a55", bgOpacity: 0.8, nameColor: "#ffb4e6",
+      shape: "pill", nameLayout: "inline", iconSize: 30, animation: "slide" },
+  },
+  {
+    name: "付箋", description: "左に名前の色の帯",
+    style: { ...DEFAULT_STYLE, fontFamily: "Klee One", fontWeight: 400, textColor: "#3b3b3b", nameColor: "#ff8a3d",
+      bgColor: "#fffbea", bgOpacity: 0.95, shape: "tag", showIcon: false, animation: "slide" },
+  },
+  {
+    name: "テロップ(下線)", description: "背景なし。文字と下線だけ",
+    style: { ...DEFAULT_STYLE, fontFamily: "Dela Gothic One", fontWeight: 400, textColor: "#ffffff", nameColor: "#00e0ff",
+      shape: "underline", outlineWidth: 2, outlineColor: "#000000", shadow: false, showIcon: false, nameLayout: "inline", animation: "fade" },
+  },
 ];
 
 // 日本語が表示できる Google Fonts(OBS はインターネットから読み込みます)

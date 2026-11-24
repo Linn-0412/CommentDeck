@@ -1,5 +1,5 @@
 // CommentDeck の設定画面
-import { Deck, DEFAULT_STYLE, ROLE_LABELS, PAID_LABELS } from "./shared/render.js";
+import { Deck, DEFAULT_STYLE, ROLE_LABELS, PAID_LABELS, SHAPES } from "./shared/render.js";
 import { DEFAULT_CONFIG, STARTER_RULES, THEMES, GOOGLE_FONTS, sampleMessages, nextTestMessage, newId } from "./shared/presets.js";
 
 const { invoke } = window.__TAURI__.core;
@@ -213,11 +213,45 @@ function fontSelect() {
   return sel;
 }
 
+// ------------------------------------------------------------ 見本の小さなプレビュー(形・テーマを絵で選ぶため)
+
+const MINI_MSGS = [
+  { id: "m1", platform: "youtube", authorName: "みかん", authorIcon: "", roles: [], parts: [{ type: "text", text: "こんばんは！" }], text: "こんばんは！" },
+  { id: "m2", platform: "youtube", authorName: "配信者", authorIcon: "", roles: ["owner"], parts: [{ type: "text", text: "ありがとう〜" }], text: "ありがとう〜" },
+];
+
+function miniPreview(style, rules = [], msgs = MINI_MSGS.slice(0, 1), cls = "sw") {
+  const sw = h("div", { class: cls });
+  const d = new Deck(sw);
+  // 小さく見せるため、大きさ関係だけ縮める(形・色・フォントはそのまま)
+  d.setConfig({
+    style: { ...style, maxItems: msgs.length, animation: "none", maxWidth: 400, fontSize: 13, iconSize: 22,
+      paddingY: Math.min(style.paddingY, 6), paddingX: Math.min(style.paddingX, 10), gap: 6, hideAfterSec: 0 },
+    rules,
+  });
+  msgs.forEach((m) => d.add({ ...m }, false));
+  return sw;
+}
+
 function renderStyle() {
   const tab = document.getElementById("tab-style");
   tab.innerHTML = "";
   const s = config.style;
   tab.append(
+    section("吹き出しの形", "クリックで選べます。色や文字はそのままで、形だけ変わります。",
+      h("div", { class: "shape-grid" }, SHAPES.map((shape) => {
+        const tile = h("div", { class: `shape-tile ${s.shape === shape.id ? "selected" : ""}`, title: shape.label, onclick: () => {
+          s.shape = shape.id;
+          if (shape.id === "line" && s.bubbleLayout !== "outside") s.bubbleLayout = "outside"; // LINE 風は名前を外に出すと本物らしい
+          renderStyle(); changed();
+        } }, miniPreview(
+          // 形が見やすいように、名前は出さず短いコメントで見せる
+          { ...s, shape: shape.id, bubbleLayout: shape.id === "line" ? "outside" : s.bubbleLayout, showName: false, showPlatform: false,
+            showIcon: false, layout: "top" },
+          [], [{ ...MINI_MSGS[0], parts: [{ type: "text", text: "やっほー" }], text: "やっほー" }]), h("span", {}, shape.label));
+        return tile;
+      })),
+      row("名前とアイコン", [select([["inside", "吹き出しの中"], ["outside", "吹き出しの外(LINE 風)"]], () => s.bubbleLayout, (v) => { s.bubbleLayout = v; renderStyle(); })])),
     section("文字", null,
       row("フォント", [fontSelect()], "この PC のフォントは、OBS を同じ PC で使う場合だけ正しく表示されます"),
       row("文字の大きさ", range(12, 64, 1, () => s.fontSize, (v) => (s.fontSize = v), "px")),
@@ -335,6 +369,7 @@ function effectEditor(rule) {
     toggle("label", "ラベルを付ける", "注目", () => [
       h("input", { type: "text", value: st.label, style: "width:90px;flex:none", oninput: (e) => { st.label = e.target.value; changed(); } }),
       color(() => st.labelColor || "#ff4d8d", (v) => (st.labelColor = v))]),
+    toggle("side", "右側に表示", "right", () => h("span", { class: "muted small" }, "(LINE の「自分」側のように)")),
     toggle("hide", "表示しない", true, () => h("span", { class: "muted small" }, "(NG ワードなど)")),
   );
 }
@@ -370,12 +405,35 @@ function renderRules() {
 
 // ------------------------------------------------------------ テーマ
 
-function themeSwatch(style) {
-  const sw = h("div", { class: "sw" });
-  const d = new Deck(sw);
-  d.setConfig({ style: { ...style, maxItems: 1, animation: "none", maxWidth: 400, fontSize: 13, iconSize: 20, paddingY: 4, paddingX: 8 }, rules: [] });
-  d.add({ id: "s", platform: "youtube", authorName: "見本", authorIcon: "", roles: [], parts: [{ type: "text", text: "コメントの見本です" }], text: "" }, false);
-  return sw;
+// テーマを当てたあとに「元に戻す」ため
+let undoTheme = null;
+
+/** テーマを当てる(見た目を置き換え、テーマ専用のルールがあれば追加)。 */
+function applyTheme(t) {
+  undoTheme = { style: { ...config.style }, rules: JSON.parse(JSON.stringify(config.rules)), name: t.name };
+  config.style = { ...DEFAULT_STYLE, ...t.style };
+  for (const r of t.rules || []) {
+    if (!config.rules.some((x) => x.name === r.name)) config.rules.push({ ...JSON.parse(JSON.stringify(r)), id: newId() });
+  }
+  renderAll();
+  changed();
+  showUndo(t);
+}
+
+function showUndo(t) {
+  saveState.innerHTML = "";
+  saveState.append(`「${t.name}」の見た目にしました${(t.rules || []).length ? "(ルールも追加しました)" : ""} `,
+    h("button", { class: "btn small", onclick: () => {
+      if (!undoTheme) return;
+      config.style = undoTheme.style; config.rules = undoTheme.rules; undoTheme = null;
+      renderAll(); changed();
+    } }, "元に戻す"));
+}
+
+/** テーマにマウスを乗せている間だけ、右のプレビューをそのテーマで表示する。 */
+function hoverPreview(t) {
+  if (t) deck.setConfig({ style: { ...DEFAULT_STYLE, ...t.style }, rules: [...config.rules, ...(t.rules || [])] });
+  else deck.setConfig(config);
 }
 
 async function exportTheme() {
@@ -404,12 +462,15 @@ function renderThemes() {
   const tab = document.getElementById("tab-themes");
   tab.innerHTML = "";
   tab.append(
-    section("見本のテーマ", "クリックすると、その見た目になります(ルールはそのまま残ります)。",
+    section("見本のテーマ", "マウスを乗せると右のプレビューで試せます。クリックでその見た目になります(あとで「元に戻す」もできます)。",
       h("div", { class: "theme-grid" }, THEMES.map((t) =>
-        h("div", { class: "theme-card", onclick: () => {
-          if (!confirm(`「${t.name}」の見た目にしますか?(今の見た目の設定は上書きされます)`)) return;
-          config.style = { ...DEFAULT_STYLE, ...t.style }; renderAll(); changed();
-        } }, themeSwatch(t.style), h("b", {}, t.name), h("span", { class: "muted small" }, t.description))))),
+        h("div", {
+          class: "theme-card",
+          onmouseenter: () => hoverPreview(t),
+          onmouseleave: () => hoverPreview(null),
+          onclick: () => applyTheme(t),
+        }, miniPreview({ ...DEFAULT_STYLE, ...t.style }, [...config.rules, ...(t.rules || [])], MINI_MSGS, "sw big"),
+        h("b", {}, t.name), h("span", { class: "muted small" }, t.description))))),
     section("テーマの共有", "見た目とルールをファイルに書き出して、ほかの人に渡したり、別の PC で使ったりできます。",
       row("", [
         h("button", { class: "btn", onclick: exportTheme }, "ファイルに書き出す"),

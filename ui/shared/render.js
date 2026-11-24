@@ -33,7 +33,19 @@ export const DEFAULT_STYLE = {
   maxWidth: 560,
   hideAfterSec: 0,               // 0 = 消さない
   animation: "slide",            // "slide" / "fade" / "pop" / "none"
+  shape: "box",                  // 吹き出しの形(SHAPES)
+  bubbleLayout: "inside",        // "inside"(名前・アイコンも吹き出しの中)/ "outside"(LINE 風に外)
 };
+
+/** 吹き出しの形。見た目タブで絵を見て選ぶ。 */
+export const SHAPES = [
+  { id: "box", label: "四角" },
+  { id: "pill", label: "カプセル" },
+  { id: "line", label: "LINE 風" },
+  { id: "speech", label: "しっぽ付き" },
+  { id: "tag", label: "付箋" },
+  { id: "underline", label: "下線だけ" },
+];
 
 export const ROLE_LABELS = {
   owner: "配信者",
@@ -212,11 +224,34 @@ const STYLE_TEXT = `
 .cd-deck.align-left { align-items: flex-start; }
 .cd-deck.align-right { align-items: flex-end; }
 .cd-item { display: flex; align-items: flex-start; gap: 10px; box-sizing: border-box; max-width: var(--max-width);
-  font-family: var(--font), "Yu Gothic UI", "Hiragino Sans", sans-serif; font-weight: var(--weight); font-size: var(--size);
-  color: var(--text); background: var(--bg); border: var(--border-w) solid var(--border); border-radius: var(--radius);
-  padding: var(--py) var(--px); margin-top: var(--gap); line-height: 1.35; word-break: break-word; }
+  font-family: var(--font), "Yu Gothic UI", "Hiragino Sans", "Segoe UI Emoji", sans-serif; font-weight: var(--weight); font-size: var(--size);
+  color: var(--text); margin-top: var(--gap); line-height: 1.35; word-break: break-word; }
 .cd-deck.layout-top .cd-item { margin-top: 0; margin-bottom: var(--gap); }
-.cd-item.shadow { box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+/* 吹き出し本体(中レイアウトでは .cd-item 自身、外レイアウトでは本文の .cd-bubble) */
+.cd-b { position: relative; background: var(--bg); border: var(--border-w) solid var(--border); border-radius: var(--radius);
+  padding: var(--py) var(--px); box-sizing: border-box; min-width: 0; }
+.cd-b.shadow { box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+/* 右側に表示(ルール) */
+.cd-item.side-right { align-self: flex-end; flex-direction: row-reverse; }
+/* 外レイアウト(LINE 風): アイコンと名前は吹き出しの外 */
+.cd-item.outside .cd-col { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.cd-item.outside.side-right .cd-col { align-items: flex-end; }
+.cd-item.outside .cd-head { text-shadow: 0 1px 3px rgba(0,0,0,.65); margin-bottom: 4px; }
+/* 形 */
+.cd-b.shape-pill { border-radius: 999px; padding-left: calc(var(--px) + 6px); padding-right: calc(var(--px) + 6px); }
+.cd-b.shape-line { margin-left: 12px; margin-top: 6px; }
+.cd-b.shape-line::before { content: ""; position: absolute; left: -15px; top: -7px; width: 18px; height: 28px; background: var(--bg);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 28'><path d='M18 9 C13 10 8 6 1 0 C1 11 4 21 18 28 Z'/></svg>") no-repeat center / 100% 100%;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 28'><path d='M18 9 C13 10 8 6 1 0 C1 11 4 21 18 28 Z'/></svg>") no-repeat center / 100% 100%; }
+.side-right .cd-b.shape-line, .align-right .cd-b.shape-line { margin-left: 0; margin-right: 12px; }
+.side-right .cd-b.shape-line::before, .cd-deck.align-right .cd-b.shape-line::before { left: auto; right: -15px; transform: scaleX(-1); }
+.cd-b.shape-speech { margin-bottom: 10px; }
+.cd-b.shape-speech::after { content: ""; position: absolute; left: 22px; bottom: -11px; border-style: solid;
+  border-width: 11px 8px 0 8px; border-color: var(--bg) transparent transparent transparent; }
+.side-right .cd-b.shape-speech::after, .cd-deck.align-right .cd-b.shape-speech::after { left: auto; right: 22px; }
+.cd-b.shape-tag { border-radius: 4px; border-left: 6px solid var(--name); }
+.cd-b.shape-underline { background: transparent; border: 0; border-bottom: 3px solid var(--name); border-radius: 0;
+  padding-left: 2px; padding-right: 2px; box-shadow: none; }
 .cd-icon { width: var(--icon); height: var(--icon); border-radius: 50%; flex: none; object-fit: cover; background: rgba(255,255,255,.15); }
 .cd-icon.placeholder { display: flex; align-items: center; justify-content: center; font-size: calc(var(--icon) * .45); color: #fff; }
 .cd-body { min-width: 0; }
@@ -227,7 +262,8 @@ const STYLE_TEXT = `
 .cd-plat { width: .7em; height: .7em; border-radius: 50%; display: inline-block; flex: none; }
 .cd-plat.youtube { background: #ff0033; }
 .cd-plat.twitch { background: #9146ff; }
-.cd-label { font-size: .85em; padding: 0 .5em; border-radius: .6em; color: #fff; font-weight: 700; }
+.cd-label { font-size: .85em; padding: 0 .5em; border-radius: .6em; color: #fff; font-weight: 700; text-shadow: none; }
+.cd-amount, .cd-plat { text-shadow: none; }
 .cd-amount { font-size: .9em; padding: 0 .5em; border-radius: .6em; background: rgba(0,0,0,.28); color: #fff; font-weight: 700; }
 .cd-text { color: var(--text); }
 .cd-text img { height: 1.4em; vertical-align: -.35em; margin: 0 .05em; }
@@ -270,7 +306,9 @@ export class Deck {
     this.config = { style: { ...DEFAULT_STYLE, ...((config && config.style) || {}) }, rules: (config && config.rules) || [] };
     const s = this.style;
     ensureFont(s);
-    this.root.className = `cd-deck layout-${s.layout} align-${s.align}`;
+    // 置き場所の要素に元から付いているクラス(テーマの見本の枠など)は消さない
+    for (const c of [...this.root.classList]) if (c.startsWith("layout-") || c.startsWith("align-")) this.root.classList.remove(c);
+    this.root.classList.add("cd-deck", `layout-${s.layout}`, `align-${s.align}`);
     // 描き直す(アニメーションなし)
     const msgs = this.messages.slice();
     this.root.innerHTML = "";
@@ -331,7 +369,11 @@ export class Deck {
   build(msg, s, over) {
     const labels = over.labels || [];
     const el = document.createElement("div");
-    el.className = "cd-item" + (s.nameLayout === "inline" ? " inline" : "") + (s.shadow ? " shadow" : "");
+    const outside = s.bubbleLayout === "outside";
+    // 吹き出し本体のクラス(形・影)。中レイアウトなら .cd-item 自身、外レイアウトなら本文の .cd-bubble に付ける
+    const bubbleClass = `cd-b shape-${s.shape || "box"}${s.shadow && s.shape !== "underline" ? " shadow" : ""}`;
+    el.className = "cd-item" + (outside ? " outside" : ` ${bubbleClass}`) +
+      (s.nameLayout === "inline" && !outside ? " inline" : "") + (s.side === "right" ? " side-right" : "");
     el.dataset.id = msg.id || "";
 
     // スーパーチャットは YouTube の色を背景に(ルールで背景色を指定していればそちらを優先)
@@ -427,8 +469,20 @@ export class Deck {
         text.appendChild(document.createTextNode(fixGlyphs(part.text || "", s.fontFamily)));
       }
     }
-    body.appendChild(text);
-    el.appendChild(body);
+    if (outside) {
+      // 名前は外、本文だけ吹き出しの中(LINE 風)
+      const col = document.createElement("div");
+      col.className = "cd-col";
+      if (head.parentNode === body) col.appendChild(head);
+      const bubble = document.createElement("div");
+      bubble.className = `cd-bubble ${bubbleClass}`;
+      bubble.appendChild(text);
+      col.appendChild(bubble);
+      el.appendChild(col);
+    } else {
+      body.appendChild(text);
+      el.appendChild(body);
+    }
     return el;
   }
 }

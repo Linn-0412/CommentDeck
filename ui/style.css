@@ -100,6 +100,18 @@ input[type=range] { flex: 1; accent-color: var(--accent); }
 .theme-card .sw { height: 54px; border-radius: 8px; margin-bottom: 8px; position: relative; overflow: hidden;
   background: linear-gradient(135deg, #2c3e50, #4b6584); }
 .theme-card .sw .cd-deck { padding: 6px; }
+.theme-card .sw.big { height: 118px; }
+.sw .cd-deck { padding: 8px; }
+
+/* ---- 吹き出しの形 */
+.shape-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.shape-tile { border: 2px solid var(--line); border-radius: 10px; padding: 6px; cursor: pointer; background: #fff; text-align: center; font-size: 12px; }
+.shape-tile:hover { border-color: #ffc1a3; }
+.shape-tile.selected { border-color: var(--accent); background: #fff6f1; }
+.shape-tile .sw { height: 64px; border-radius: 7px; margin-bottom: 4px; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #2c3e50, #4b6584); }
+.shape-tile .sw .cd-deck { padding: 10px 8px 8px 14px; }
+.shape-tile span { font-weight: 600; color: #55525c; }
 .theme-card b { display: block; }
 
 /* ---- プレビュー */
