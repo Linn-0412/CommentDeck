@@ -16,6 +16,11 @@ export const STARTER_RULES = () => [
     style: { bgColor: "#ff4d8d", bgOpacity: 0.85, label: "初見", labelColor: "#c2185b" },
   },
   {
+    id: newId(), name: "常連さん", enabled: true, match: "all",
+    conditions: [{ type: "visits", min: 5 }],
+    style: { label: "常連 {visits}回目", labelColor: "#00897b" },
+  },
+  {
     id: newId(), name: "モデレーター", enabled: true, match: "all",
     conditions: [{ type: "role", roles: ["moderator"] }],
     style: { nameColor: "#5ec8ff", label: "MOD", labelColor: "#1e88e5" },
@@ -104,11 +109,11 @@ const sampleIcon = (c) =>
 let sampleSeq = 0;
 export function sampleMessages() {
   const t = Date.now();
-  const mk = (o) => ({ id: `sample-${t}-${sampleSeq++}`, roles: [], authorColor: "", paid: null, timestamp: t, ...o,
+  const mk = (o) => ({ id: `sample-${t}-${sampleSeq++}`, roles: [], authorColor: "", paid: null, timestamp: t, visits: 2, ...o,
     parts: [{ type: "text", text: o.text }] });
   return [
-    mk({ platform: "youtube", authorName: "みかん", authorIcon: sampleIcon("#ff9f43"), text: "こんばんは〜！今日も楽しみにしてました" }),
-    mk({ platform: "twitch", authorName: "night_owl", authorIcon: "", authorColor: "#7ee081", text: "初見です！よろしくお願いします", roles: ["first"] }),
+    mk({ platform: "youtube", authorName: "みかん", authorIcon: sampleIcon("#ff9f43"), text: "こんばんは〜！今日も楽しみにしてました", visits: 12 }),
+    mk({ platform: "twitch", authorName: "night_owl", authorIcon: "", authorColor: "#7ee081", text: "初見です！よろしくお願いします", roles: ["first"], visits: 1 }),
     mk({ platform: "youtube", authorName: "さくら", authorIcon: sampleIcon("#ff6b9d"), text: "応援してます！", roles: ["member"],
       paid: { kind: "superchat", amountText: "¥1,000", amount: 1000, color: "#ffca28" } }),
     mk({ platform: "twitch", authorName: "ModBot", authorIcon: "", authorColor: "#5ec8ff", text: "ルールを守って楽しく見ましょう", roles: ["moderator"] }),

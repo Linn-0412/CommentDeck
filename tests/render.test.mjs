@@ -64,3 +64,12 @@ test("rgba", () => {
   assert.equal(rgba("#ff0000", 0.5), "rgba(255, 0, 0, 0.5)");
   assert.equal(rgba("#fff", 1), "rgba(255, 255, 255, 1)");
 });
+
+test("常連さん(visits)と {visits} ラベル", () => {
+  assert.equal(matchCondition(msg({ visits: 5 }), { type: "visits", min: 5 }), true);
+  assert.equal(matchCondition(msg({ visits: 4 }), { type: "visits", min: 5 }), false);
+  assert.equal(matchCondition(msg({}), { type: "visits", min: 1 }), false); // 回数不明(0)は合わない
+  const rules = STARTER_RULES();
+  const o = evaluateRules(msg({ text: "hi", visits: 12 }), rules);
+  assert.deepEqual(o.labels.map((l) => l.text), ["常連 12回目"]);
+});

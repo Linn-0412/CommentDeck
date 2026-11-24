@@ -94,6 +94,9 @@ export function matchCondition(msg, c) {
     }
     case "platform":
       return msg.platform === c.platform;
+    case "visits":
+      // 常連さん: このチャンネルでコメントした配信の数
+      return (Number(msg.visits) || 0) >= Math.max(1, Number(c.min) || 1);
     default:
       return false;
   }
@@ -114,7 +117,8 @@ export function evaluateRules(msg, rules) {
     const s = r.style || {};
     for (const [k, v] of Object.entries(s)) {
       if (v === undefined || v === null || v === "") continue;
-      if (k === "label") labels.push({ text: v, color: s.labelColor || "#ff4d8d" });
+      // ラベルの {visits} は来てくれた回数に置き換える(例: 「{visits}回目」→「12回目」)
+      if (k === "label") labels.push({ text: String(v).replace(/\{visits\}/g, String(msg.visits || 1)), color: s.labelColor || "#ff4d8d" });
       else if (k !== "labelColor") out[k] = v;
     }
   }

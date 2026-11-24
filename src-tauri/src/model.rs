@@ -20,6 +20,8 @@ pub struct ChatMessage {
     pub text: String,
     pub paid: Option<Paid>,
     pub timestamp: u64,
+    /// その人がこのチャンネルでコメントした配信の数(CommentDeck が記録し始めてから)。0 = 不明
+    pub visits: u32,
 }
 
 #[derive(Serialize, Clone, Debug)]

@@ -8,7 +8,20 @@ use tauri::AppHandle;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::model::{now_ms, ChatMessage, Paid, Part};
+use crate::seen::Seen;
 use crate::{publish, publish_delete, set_status};
+
+/// Twitch はチャットから配信の ID が取れないので、日付で「同じ配信」とみなす(常連さんの回数用)。
+fn stream_key() -> String {
+    chrono::Local::now().format("%Y-%m-%d").to_string()
+}
+
+/// 来てくれた回数を付けて送る(初見は Twitch の first-msg を使う)。
+fn publish_counted(app: &AppHandle, seen: &mut Seen, mut m: ChatMessage) {
+    let (_, visits) = seen.record(&m.author_id, &stream_key());
+    m.visits = visits;
+    publish(app, &m);
+}
 
 const IRC_URL: &str = "wss://irc-ws.chat.twitch.tv:443";
 
@@ -36,6 +49,7 @@ pub async fn run(app: AppHandle, input: String) {
         );
         return;
     }
+    let mut seen = Seen::load(&app, "twitch", &channel);
     let mut wait = 2u64;
     loop {
         set_status(
@@ -44,7 +58,7 @@ pub async fn run(app: AppHandle, input: String) {
             "connecting",
             format!("#{channel} に接続しています…"),
         );
-        match session(&app, &channel).await {
+        match session(&app, &channel, &mut seen).await {
             Ok(()) => wait = 2,
             Err(e) => set_status(
                 &app,
@@ -58,7 +72,7 @@ pub async fn run(app: AppHandle, input: String) {
     }
 }
 
-async fn session(app: &AppHandle, channel: &str) -> Result<(), String> {
+async fn session(app: &AppHandle, channel: &str, seen: &mut Seen) -> Result<(), String> {
     let (mut ws, _) = tokio_tungstenite::connect_async(IRC_URL)
         .await
         .map_err(|e| format!("Twitch に接続できませんでした: {e}"))?;
@@ -96,10 +110,10 @@ async fn session(app: &AppHandle, channel: &str) -> Result<(), String> {
                     "connected",
                     format!("#{channel} のチャットを表示しています"),
                 ),
-                "PRIVMSG" => publish(app, &privmsg(&irc)),
+                "PRIVMSG" => publish_counted(app, seen, privmsg(&irc)),
                 "USERNOTICE" => {
                     if let Some(m) = usernotice(&irc) {
-                        publish(app, &m);
+                        publish_counted(app, seen, m);
                     }
                 }
                 "CLEARMSG" => {
@@ -262,6 +276,7 @@ fn base(irc: &Irc, text: String) -> ChatMessage {
         text,
         paid: None,
         timestamp: now_ms(),
+        visits: 0,
     }
 }
 

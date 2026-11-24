@@ -595,6 +595,7 @@ name = "comment-deck"
 version = "0.1.4"
 dependencies = [
  "axum",
+ "chrono",
  "font-kit",
  "futures-util",
  "regex",

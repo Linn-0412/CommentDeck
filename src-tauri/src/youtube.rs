@@ -253,10 +253,10 @@ async fn chat_session(
                 if first {
                     // 接続前のコメントは表示しないが、投稿者は「すでに来ている人」として記録する
                     if let Some(m) = a.pointer("/addChatItemAction/item").and_then(parse_item) {
-                        seen.mark(&m.author_id);
+                        seen.record(&m.author_id, video);
                     }
                 } else {
-                    handle_action(app, a, seen);
+                    handle_action(app, a, seen, video);
                 }
             }
         }
@@ -405,10 +405,11 @@ fn base(r: &Value) -> ChatMessage {
         parts,
         paid: None,
         timestamp: now_ms(),
+        visits: 0,
     }
 }
 
-fn handle_action(app: &AppHandle, a: &Value, seen: &mut Seen) {
+fn handle_action(app: &AppHandle, a: &Value, seen: &mut Seen, video: &str) {
     if let Some(id) = a
         .pointer("/markChatItemAsDeletedAction/targetItemId")
         .and_then(|s| s.as_str())
@@ -420,10 +421,12 @@ fn handle_action(app: &AppHandle, a: &Value, seen: &mut Seen) {
         return;
     };
     if let Some(mut msg) = parse_item(item) {
-        // これまでに見たことのない人なら「初見」
-        if seen.mark(&msg.author_id) && !msg.roles.iter().any(|r| r == "owner") {
+        // これまでに見たことのない人なら「初見」。来てくれた配信の回数も付ける(常連さんの判定用)
+        let (first, visits) = seen.record(&msg.author_id, video);
+        if first && !msg.roles.iter().any(|r| r == "owner") {
             msg.roles.push("first".into());
         }
+        msg.visits = visits;
         publish(app, &msg);
     }
 }
@@ -509,6 +512,7 @@ pub fn parse_item(item: &Value) -> Option<ChatMessage> {
                 color: String::new(),
             }),
             timestamp: now_ms(),
+            visits: 0,
         });
     }
     None

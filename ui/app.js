@@ -290,6 +290,7 @@ const COND_TYPES = [
   ["text", "コメントに特定の文字を含む"],
   ["role", "コメントした人の種類"],
   ["paid", "投げ銭・ギフト"],
+  ["visits", "常連さん(来てくれた回数)"],
   ["user", "特定のユーザー"],
   ["platform", "配信サービス"],
 ];
@@ -301,6 +302,7 @@ function newCondition(type) {
     case "paid": return { type, kinds: [], minAmount: 0 };
     case "user": return { type, names: [""] };
     case "platform": return { type, platform: "youtube" };
+    case "visits": return { type, min: 5 };
   }
 }
 
@@ -340,6 +342,13 @@ function conditionEditor(rule, c, idx) {
   } else if (c.type === "user") {
     body.append(h("input", { type: "text", placeholder: "表示名(、 区切りで複数)", value: listText(c.names),
       oninput: (e) => { c.names = parseList(e.target.value); changed(); } }));
+  } else if (c.type === "visits") {
+    body.append(
+      h("span", { class: "muted small" }, "コメントした配信が"),
+      h("input", { type: "number", min: 1, value: c.min || 5, oninput: (e) => { c.min = Math.max(1, Number(e.target.value) || 1); changed(); } }),
+      h("span", { class: "muted small" }, "回以上"),
+      h("div", { class: "muted small", style: "flex-basis:100%" },
+        "同じ配信で何回コメントしても 1 回と数えます(Twitch は 1 日 1 回)。CommentDeck を使い始めてから数えるので、効いてくるのは何回か配信してからです。ラベルに {visits} と書くと回数を表示できます。"));
   } else if (c.type === "platform") {
     body.append(select([["youtube", "YouTube のコメント"], ["twitch", "Twitch のコメント"]], () => c.platform, (v) => (c.platform = v)));
   }
@@ -516,18 +525,18 @@ function renderAppTab() {
     section("バージョン", null,
       row("CommentDeck", [h("span", {}, `v${appVersion}`), h("button", { class: "btn small", onclick: () => checkUpdate(true) }, "更新を確認")]),
       h("p", { class: "help" }, "起動時に新しいバージョンがあるか自動で確認します。")),
-    section("初見の記録", "YouTube の「初見(チャンネルで初めて)」は、CommentDeck がこれまでに見たコメントした人を記録して判定しています。記録を消すと、次からは全員が初見扱いからやり直しになります。",
+    section("コメントした人の記録(初見・常連さん)", "「初見」(YouTube)と「常連さん」は、CommentDeck がコメントした人と来てくれた回数を記録して判定しています。記録を消すと、全員が初見・1 回目からやり直しになります。",
       row("", [h("button", { class: "btn danger", onclick: async () => {
-        if (!confirm("初見の記録を消しますか?")) return;
+        if (!confirm("コメントした人の記録(初見・常連さん)を消しますか?")) return;
         try {
           await invoke("reset_seen");
           // 接続中なら記録を読み直すためにつなぎ直す
           if (youtubeTarget() && (status.youtube || {}).state && status.youtube.state !== "idle") {
             await connectYouTube();
           }
-          alert("初見の記録を消しました");
+          alert("記録を消しました");
         } catch (e) { alert(e); }
-      } }, "初見の記録を消す")])),
+      } }, "記録を消す")])),
     section("オーバーレイのポート", "ほかのアプリとポートがぶつかったときだけ変えてください。変えたあとは CommentDeck を再起動し、OBS の URL も貼り直してください。",
       row("ポート番号", [h("input", { type: "number", min: 1024, max: 65535, value: config.port || 17890,
         onchange: (e) => { const v = Number(e.target.value); if (v >= 1024 && v <= 65535) { config.port = v; changed(); } } })])),
