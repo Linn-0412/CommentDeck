@@ -4,7 +4,7 @@ version = "0.1.5"
 description = "Customizable stream comment overlay for YouTube and Twitch"
 authors = ["Linn-0412"]
 edition = "2021"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [lib]
 name = "comment_deck_lib"

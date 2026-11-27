@@ -103,4 +103,6 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## ライセンス
 
-[MIT License](LICENSE)
+[GNU General Public License v3.0](LICENSE)(GPL-3.0)
+
+v0.1.5 までは MIT License で公開していました。次のバージョンから GPL-3.0 になります。
